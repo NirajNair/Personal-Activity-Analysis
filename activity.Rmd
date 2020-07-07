@@ -1,0 +1,77 @@
+---
+output:
+  html_document: default
+  pdf_document: default
+---
+```{r global_opts, include=FALSE}
+knitr::opts_chunk$set(cache = T, echo = T)
+```
+# Practical Machine Learning
+## Human Exercise Prediction
+#### *Niraj Nair*
+#### *6 June, 2020*
+
+### Introduction
+##### Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
+
+### Getting and Cleaning Data
+Our data have already been broken into training and test sets. The first step is to load them. I've already downloaded them. Thr required packages are also loaded
+
+```{r download}
+library(lattice); library(ggplot2); library(caret); library(randomForest); library(rpart); library(rpart.plot);
+```
+We'll ignore the test data until we've selected a model. After reading in the training data, there's a little tidying to do:
+
+* Replace empty cells and cells with errors with `NA`s
+* Remove rows that only have data for the summary variables
+```{r}
+
+set.seed(1234)
+
+trainingset <- read.csv("pml-training.csv", na.strings=c("NA","#DIV/0!", ""))
+testingset <- read.csv("pml-testing.csv", na.strings=c("NA","#DIV/0!", ""))
+
+trainingset<-trainingset[,colSums(is.na(trainingset)) == 0]
+testingset <-testingset[,colSums(is.na(testingset)) == 0]
+
+trainingset   <-trainingset[,-c(1:7)]
+testingset <-testingset[,-c(1:7)]
+
+traintrainset <- createDataPartition(y=trainingset$classe, p=0.75, list=FALSE)
+TrainTrainingSet <- trainingset[traintrainset, ] 
+TestTrainingSet <- trainingset[-traintrainset, ]
+TrainTrainingSet$classe <- factor(TrainTrainingSet$classe)
+
+plot(TrainTrainingSet$classe, col="yellow", xlab="classe", ylab="Frequency")
+```
+
+### Prediction model 1: Decision Tree
+```{r}
+model1 <- rpart(classe ~ ., data=TrainTrainingSet, method="class")
+
+prediction1 <- predict(model1, TestTrainingSet, type = "class")
+
+rpart.plot(model1, main="Classification Tree", extra=102, under=TRUE, faclen=0)
+
+confusionMatrix(table(prediction1, TestTrainingSet$classe))
+```
+
+
+### Prediction model 2: Random Forest
+```{r}
+model2 <- randomForest(classe ~. , data=TrainTrainingSet, method="class")
+
+prediction2 <- predict(model2, TestTrainingSet, type = "class")
+
+confusionMatrix(table(prediction2, TestTrainingSet$classe))
+```
+
+### Decision
+From the above confusion matrices we can understand that random forest is better for prediction than decision tree.
+
+### Conclusion
+The outcome of using Prediction Model 2 (Random Forest) on test data is as follows:
+```{r}
+predictfinal <- predict(model2, testingset, type="class")
+predictfinal
+```
